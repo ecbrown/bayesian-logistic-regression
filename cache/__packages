@@ -1,0 +1,16 @@
+base
+datasets
+filehash
+ggplot2
+graphics
+grDevices
+inline
+knitr
+methods
+Rcpp
+rstan
+stats
+stats4
+tikzDevice
+utils
+xtable

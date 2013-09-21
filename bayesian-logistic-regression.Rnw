@@ -1,0 +1,172 @@
+\documentclass{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{bm}
+
+\begin{document}
+\title{Bayesian Logistic Regression}
+\author{Eric C. Brown}
+\maketitle
+
+<<knitr, echo=FALSE, results='hide', error=TRUE, warning=TRUE, message=FALSE>>=
+#update.packages(ask=FALSE)
+if(!(require(knitr))){install.packages('knitr', dependencies=TRUE); require(knitr)}
+cache.path <- file.path(getwd(), 'cache/')
+opts_chunk$set(cache.path=cache.path)
+fig.path <- file.path(getwd(), 'figures/figure-')
+opts_chunk$set(fig.path=fig.path)
+@
+
+<<packages, echo=FALSE, results='hide', error=TRUE, warning=TRUE, message=FALSE>>=
+if(!(require(ggplot2))){install.packages('ggplot2', dependencies=TRUE); require(ggplot2)}
+if(!(require(inline))){install.packages('inline', dependencies=TRUE); require(inline)}
+if(!(require(Rcpp))){install.packages('Rcpp', dependencies=TRUE); require(Rcpp)}
+if(!(require(rstan))){
+  Sys.setenv(R_MAKEVARS_USER='')
+  options(repos=c(getOption('repos'), rstan='http://wiki.stan.googlecode.com/git/R'))
+  install.packages('rstan', type='source')
+  require(rstan)
+}
+if(!require(filehash)){install.packages('filehash', dependencies=TRUE); require(filehash)}
+if(!require(tikzDevice)){install.packages('tikzDevice', repos='http://R-Forge.R-project.org'); require(tikzDevice)}
+if(!(require(xtable))){install.packages('xtable', dependencies=TRUE); require(xtable)}
+@
+
+\section{Model}
+$$\textbf{y} \sim \mathrm{Bern}(\bm{\theta})$$
+$$\bm{\theta} = \frac{1}{1 + \exp(-\bm{\mu})}$$
+$$\bm{\mu} = \beta_0 + \bm{\mathrm{X}} \bm{\beta}$$
+$$\beta_0 \sim \mathcal{N}(0,100)$$
+$$\beta_j \sim \mathcal{N}(0,100), \quad j=1,\dots,J$$
+
+\section{Code}
+<<bayesianLogisticRegression>>=
+bayesianLogisticRegression <- function(y, X=NULL, Xnew=NULL, iter=5000, thin=1, chains=1, burnin=floor(iter/2), betameanpriors=if(is.null(X)){0}else{rep(0,ncol(X)+1)}, betasdpriors=if(is.null(X)){100}else{rep(100,ncol(X)+1)}, inits=NULL, seed=1) {
+    
+  if( is.null(X) ) {
+    J <- 0
+  } else {
+    J <- ncol(X)
+    if( !(nrow(X) == length(y)) ) {
+      message('ERROR: X and y must have the same number of rows.')
+      message(paste(c('ERROR: nrow(X) =', nrow(X), ', length(y) =', length(y)), collapse=' '))
+      return(NA)
+    }
+  }
+
+  if( !(is.null(Xnew)) ) {
+    if( !(ncol(Xnew) == J) ) {
+      message('ERROR: X and Xnew must have the same number of columns.')
+      message(paste(c('ERROR: ncol(X) =', ncol(X), ', ncol(Xnew) =', ncol(Xnew)), collapse=' '))
+      return()
+    }
+  }
+  
+  if( is.null(X) ) {
+    form <- formula('y ~ 1')
+    mm <- model.matrix(form, data.frame(y=y))
+  } else {
+    form <- formula( paste('y ~ ', paste( names(X), collapse='+') , sep='') )
+    mm <- model.matrix(form, X)
+  }
+
+  if( is.null(inits) ) {
+    fit <- glm.fit(mm, y, family=binomial(link='logit'))
+    inits <- coef(fit)
+  }
+
+  if( is.null(Xnew) ) {
+  model <- '
+  data {
+    int<lower=0>              N;
+    int<lower=1>              J;
+    int<lower=0, upper=1>  y[N];
+    matrix[N,J]               X;
+    vector[J]    betameanpriors;
+    vector[J]      betasdpriors;
+  }
+  transformed data {
+  }
+  parameters {
+    vector[J] beta;
+  }
+  model {
+    beta ~ normal(betameanpriors,betasdpriors);
+    y ~ bernoulli_logit( X*beta );
+  }
+  generated quantities {
+  }
+  '
+  data <- list(
+    N              = nrow(mm),
+    J              = ncol(mm),
+    y              = y,
+    X              = mm,
+    betameanpriors = betameanpriors,
+    betasdpriors   = betasdpriors
+    )
+  set.seed(seed)
+  print(seed)
+  fit <- stan(model_code=model, data=data, chains=chains, iter=iter, warmup=burnin, thin=thin, init=function(x){list(beta=inits)}, nondiag_mass=TRUE, seed=seed)
+  } else {
+      mmnew <- model.matrix(form, Xnew)
+      model <- '
+  data {
+    int<lower=1>               N;
+    int<lower=1>               J;
+    int<lower=0, upper=1>   y[N];
+    matrix[N,J]                X;
+    vector[J]     betameanpriors;
+    vector[J]       betasdpriors;
+    int<lower=0>            Nnew;
+    matrix[Nnew,J]          Xnew;
+  }
+  transformed data {
+  }
+  parameters {
+    vector[J] beta;
+  }
+  model {
+    beta ~ normal(betameanpriors,betasdpriors);
+    y ~ bernoulli_logit( X*beta );
+  }
+  generated quantities {
+    vector[Nnew] thetanew;
+    for( i in 1:Nnew ) {
+      thetanew[i] <- inv_logit( Xnew[i] * beta );
+    }
+  }
+  '
+  data <- list(
+    N    = nrow(mm),
+    J    = ncol(mm),
+    y    = y,
+    X    = mm,
+    betameanpriors = betameanpriors,
+    betasdpriors   = betasdpriors,
+    Nnew = nrow(mmnew),
+    Xnew = mmnew    
+    )
+  set.seed(seed)
+  print(seed)
+  fit <- stan(model_code=model, data=data, chains=chains, iter=iter, warmup=burnin, thin=thin, init=function(x){list(beta=inits)}, nondiag_mass=TRUE, seed=seed)
+  }
+  return(fit)
+}
+@
+
+<<fit, cache=TRUE, dependson='bayesianLogisticRegression'>>=
+y <- mtcars[,'am']
+X <- as.data.frame(mtcars[,c('mpg', 'cyl', 'disp', 'hp', 'drat', 'wt', 'vs', 'gear', 'carb')])
+Xnew <- X
+fit <- bayesianLogisticRegression(y=y, X=X, 
+                                  # Xnew=Xnew,
+                                  iter=10000, chains=4, inits=rep(0,ncol(X)+1))
+@
+
+
+
+
+\section{Example}
+
+\end{document}

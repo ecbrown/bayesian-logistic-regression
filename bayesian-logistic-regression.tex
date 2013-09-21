@@ -1,0 +1,209 @@
+\documentclass{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{bm}
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+
+\begin{document}
+\title{Bayesian Logistic Regression}
+\author{Eric C. Brown}
+\maketitle
+
+
+
+
+
+
+
+\section{Model}
+$$\textbf{y} \sim \mathrm{Bern}(\bm{\theta})$$
+$$\bm{\theta} = \frac{1}{1 + \exp(-\bm{\mu})}$$
+$$\bm{\mu} = \beta_0 + \bm{\mathrm{X}} \bm{\beta}$$
+$$\beta_0 \sim \mathcal{N}(0,100)$$
+$$\beta_j \sim \mathcal{N}(0,100), \quad j=1,\dots,J$$
+
+\section{Code}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{bayesianLogisticRegression} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y}\hlstd{,} \hlkwc{X} \hlstd{=} \hlkwa{NULL}\hlstd{,} \hlkwc{Xnew} \hlstd{=} \hlkwa{NULL}\hlstd{,} \hlkwc{iter} \hlstd{=} \hlnum{5000}\hlstd{,}
+    \hlkwc{thin} \hlstd{=} \hlnum{1}\hlstd{,} \hlkwc{chains} \hlstd{=} \hlnum{1}\hlstd{,} \hlkwc{burnin} \hlstd{=} \hlkwd{floor}\hlstd{(iter}\hlopt{/}\hlnum{2}\hlstd{),} \hlkwc{betameanpriors} \hlstd{=} \hlkwa{if} \hlstd{(}\hlkwd{is.null}\hlstd{(X)) \{}
+        \hlnum{0}
+    \hlstd{\}} \hlkwa{else} \hlstd{\{}
+        \hlkwd{rep}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwd{ncol}\hlstd{(X)} \hlopt{+} \hlnum{1}\hlstd{)}
+    \hlstd{\},} \hlkwc{betasdpriors} \hlstd{=} \hlkwa{if} \hlstd{(}\hlkwd{is.null}\hlstd{(X)) \{}
+        \hlnum{100}
+    \hlstd{\}} \hlkwa{else} \hlstd{\{}
+        \hlkwd{rep}\hlstd{(}\hlnum{100}\hlstd{,} \hlkwd{ncol}\hlstd{(X)} \hlopt{+} \hlnum{1}\hlstd{)}
+    \hlstd{\},} \hlkwc{inits} \hlstd{=} \hlkwa{NULL}\hlstd{,} \hlkwc{seed} \hlstd{=} \hlnum{1}\hlstd{) \{}
+    \hlkwa{if} \hlstd{(}\hlkwd{is.null}\hlstd{(X)) \{}
+        \hlstd{J} \hlkwb{<-} \hlnum{0}
+    \hlstd{\}} \hlkwa{else} \hlstd{\{}
+        \hlstd{J} \hlkwb{<-} \hlkwd{ncol}\hlstd{(X)}
+        \hlkwa{if} \hlstd{(}\hlopt{!}\hlstd{(}\hlkwd{nrow}\hlstd{(X)} \hlopt{==} \hlkwd{length}\hlstd{(y))) \{}
+            \hlkwd{message}\hlstd{(}\hlstr{"ERROR: X and y must have the same number of rows."}\hlstd{)}
+            \hlkwd{message}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlkwd{c}\hlstd{(}\hlstr{"ERROR: nrow(X) ="}\hlstd{,} \hlkwd{nrow}\hlstd{(X),} \hlstr{", length(y) ="}\hlstd{,} \hlkwd{length}\hlstd{(y)),}
+                \hlkwc{collapse} \hlstd{=} \hlstr{" "}\hlstd{))}
+            \hlkwd{return}\hlstd{(}\hlnum{NA}\hlstd{)}
+        \hlstd{\}}
+    \hlstd{\}}
+    \hlkwa{if} \hlstd{(}\hlopt{!}\hlstd{(}\hlkwd{is.null}\hlstd{(Xnew))) \{}
+        \hlkwa{if} \hlstd{(}\hlopt{!}\hlstd{(}\hlkwd{ncol}\hlstd{(Xnew)} \hlopt{==} \hlstd{J)) \{}
+            \hlkwd{message}\hlstd{(}\hlstr{"ERROR: X and Xnew must have the same number of columns."}\hlstd{)}
+            \hlkwd{message}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlkwd{c}\hlstd{(}\hlstr{"ERROR: ncol(X) ="}\hlstd{,} \hlkwd{ncol}\hlstd{(X),} \hlstr{", ncol(Xnew) ="}\hlstd{,} \hlkwd{ncol}\hlstd{(Xnew)),}
+                \hlkwc{collapse} \hlstd{=} \hlstr{" "}\hlstd{))}
+            \hlkwd{return}\hlstd{()}
+        \hlstd{\}}
+    \hlstd{\}}
+    \hlkwa{if} \hlstd{(}\hlkwd{is.null}\hlstd{(X)) \{}
+        \hlstd{form} \hlkwb{<-} \hlkwd{formula}\hlstd{(}\hlstr{"y ~ 1"}\hlstd{)}
+        \hlstd{mm} \hlkwb{<-} \hlkwd{model.matrix}\hlstd{(form,} \hlkwd{data.frame}\hlstd{(}\hlkwc{y} \hlstd{= y))}
+    \hlstd{\}} \hlkwa{else} \hlstd{\{}
+        \hlstd{form} \hlkwb{<-} \hlkwd{formula}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"y ~ "}\hlstd{,} \hlkwd{paste}\hlstd{(}\hlkwd{names}\hlstd{(X),} \hlkwc{collapse} \hlstd{=} \hlstr{"+"}\hlstd{),} \hlkwc{sep} \hlstd{=} \hlstr{""}\hlstd{))}
+        \hlstd{mm} \hlkwb{<-} \hlkwd{model.matrix}\hlstd{(form, X)}
+    \hlstd{\}}
+    \hlkwa{if} \hlstd{(}\hlkwd{is.null}\hlstd{(inits)) \{}
+        \hlstd{fit} \hlkwb{<-} \hlkwd{glm.fit}\hlstd{(mm, y,} \hlkwc{family} \hlstd{=} \hlkwd{binomial}\hlstd{(}\hlkwc{link} \hlstd{=} \hlstr{"logit"}\hlstd{))}
+        \hlstd{inits} \hlkwb{<-} \hlkwd{coef}\hlstd{(fit)}
+    \hlstd{\}}
+    \hlkwa{if} \hlstd{(}\hlkwd{is.null}\hlstd{(Xnew)) \{}
+        \hlstd{model} \hlkwb{<-} \hlstr{"\textbackslash{}n  data \{\textbackslash{}n    int<lower=0>              N;\textbackslash{}n    int<lower=1>              J;\textbackslash{}n    int<lower=0, upper=1>  y[N];\textbackslash{}n    matrix[N,J]               X;\textbackslash{}n    vector[J]    betameanpriors;\textbackslash{}n    vector[J]      betasdpriors;\textbackslash{}n  \}\textbackslash{}n  transformed data \{\textbackslash{}n  \}\textbackslash{}n  parameters \{\textbackslash{}n    vector[J] beta;\textbackslash{}n  \}\textbackslash{}n  model \{\textbackslash{}n    beta ~ normal(betameanpriors,betasdpriors);\textbackslash{}n    y ~ bernoulli_logit( X*beta );\textbackslash{}n  \}\textbackslash{}n  generated quantities \{\textbackslash{}n  \}\textbackslash{}n  "}
+        \hlstd{data} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{N} \hlstd{=} \hlkwd{nrow}\hlstd{(mm),} \hlkwc{J} \hlstd{=} \hlkwd{ncol}\hlstd{(mm),} \hlkwc{y} \hlstd{= y,} \hlkwc{X} \hlstd{= mm,} \hlkwc{betameanpriors} \hlstd{= betameanpriors,}
+            \hlkwc{betasdpriors} \hlstd{= betasdpriors)}
+        \hlkwd{set.seed}\hlstd{(seed)}
+        \hlkwd{print}\hlstd{(seed)}
+        \hlstd{fit} \hlkwb{<-} \hlkwd{stan}\hlstd{(}\hlkwc{model_code} \hlstd{= model,} \hlkwc{data} \hlstd{= data,} \hlkwc{chains} \hlstd{= chains,} \hlkwc{iter} \hlstd{= iter,}
+            \hlkwc{warmup} \hlstd{= burnin,} \hlkwc{thin} \hlstd{= thin,} \hlkwc{init} \hlstd{=} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{) \{}
+                \hlkwd{list}\hlstd{(}\hlkwc{beta} \hlstd{= inits)}
+            \hlstd{\},} \hlkwc{nondiag_mass} \hlstd{=} \hlnum{TRUE}\hlstd{,} \hlkwc{seed} \hlstd{= seed)}
+    \hlstd{\}} \hlkwa{else} \hlstd{\{}
+        \hlstd{mmnew} \hlkwb{<-} \hlkwd{model.matrix}\hlstd{(form, Xnew)}
+        \hlstd{model} \hlkwb{<-} \hlstr{"\textbackslash{}n  data \{\textbackslash{}n    int<lower=1>               N;\textbackslash{}n    int<lower=1>               J;\textbackslash{}n    int<lower=0, upper=1>   y[N];\textbackslash{}n    matrix[N,J]                X;\textbackslash{}n    vector[J]     betameanpriors;\textbackslash{}n    vector[J]       betasdpriors;\textbackslash{}n    int<lower=0>            Nnew;\textbackslash{}n    matrix[Nnew,J]          Xnew;\textbackslash{}n  \}\textbackslash{}n  transformed data \{\textbackslash{}n  \}\textbackslash{}n  parameters \{\textbackslash{}n    vector[J] beta;\textbackslash{}n  \}\textbackslash{}n  model \{\textbackslash{}n    beta ~ normal(betameanpriors,betasdpriors);\textbackslash{}n    y ~ bernoulli_logit( X*beta );\textbackslash{}n  \}\textbackslash{}n  generated quantities \{\textbackslash{}n    vector[Nnew] thetanew;\textbackslash{}n    for( i in 1:Nnew ) \{\textbackslash{}n      thetanew[i] <- inv_logit( Xnew[i] * beta );\textbackslash{}n    \}\textbackslash{}n  \}\textbackslash{}n  "}
+        \hlstd{data} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{N} \hlstd{=} \hlkwd{nrow}\hlstd{(mm),} \hlkwc{J} \hlstd{=} \hlkwd{ncol}\hlstd{(mm),} \hlkwc{y} \hlstd{= y,} \hlkwc{X} \hlstd{= mm,} \hlkwc{betameanpriors} \hlstd{= betameanpriors,}
+            \hlkwc{betasdpriors} \hlstd{= betasdpriors,} \hlkwc{Nnew} \hlstd{=} \hlkwd{nrow}\hlstd{(mmnew),} \hlkwc{Xnew} \hlstd{= mmnew)}
+        \hlkwd{set.seed}\hlstd{(seed)}
+        \hlkwd{print}\hlstd{(seed)}
+        \hlstd{fit} \hlkwb{<-} \hlkwd{stan}\hlstd{(}\hlkwc{model_code} \hlstd{= model,} \hlkwc{data} \hlstd{= data,} \hlkwc{chains} \hlstd{= chains,} \hlkwc{iter} \hlstd{= iter,}
+            \hlkwc{warmup} \hlstd{= burnin,} \hlkwc{thin} \hlstd{= thin,} \hlkwc{init} \hlstd{=} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{) \{}
+                \hlkwd{list}\hlstd{(}\hlkwc{beta} \hlstd{= inits)}
+            \hlstd{\},} \hlkwc{nondiag_mass} \hlstd{=} \hlnum{TRUE}\hlstd{,} \hlkwc{seed} \hlstd{= seed)}
+    \hlstd{\}}
+    \hlkwd{return}\hlstd{(fit)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{y} \hlkwb{<-} \hlstd{mtcars[,}\hlstr{'am'}\hlstd{]}
+\hlstd{X} \hlkwb{<-} \hlkwd{as.data.frame}\hlstd{(mtcars[,}\hlkwd{c}\hlstd{(}\hlstr{'mpg'}\hlstd{,} \hlstr{'cyl'}\hlstd{,} \hlstr{'disp'}\hlstd{,} \hlstr{'hp'}\hlstd{,} \hlstr{'drat'}\hlstd{,} \hlstr{'wt'}\hlstd{,} \hlstr{'vs'}\hlstd{,} \hlstr{'gear'}\hlstd{,} \hlstr{'carb'}\hlstd{)])}
+\hlstd{Xnew} \hlkwb{<-} \hlstd{X}
+\hlstd{fit} \hlkwb{<-} \hlkwd{bayesianLogisticRegression}\hlstd{(}\hlkwc{y}\hlstd{=y,} \hlkwc{X}\hlstd{=X,}
+                                  \hlcom{# Xnew=Xnew,}
+                                  \hlkwc{iter}\hlstd{=}\hlnum{10000}\hlstd{,} \hlkwc{chains}\hlstd{=}\hlnum{4}\hlstd{,} \hlkwc{inits}\hlstd{=}\hlkwd{rep}\hlstd{(}\hlnum{0}\hlstd{,}\hlkwd{ncol}\hlstd{(X)}\hlopt{+}\hlnum{1}\hlstd{))}
+\end{alltt}
+\begin{verbatim}
+## [1] 1
+## 
+## TRANSLATING MODEL 'model' FROM Stan CODE TO C++ CODE NOW.
+## COMPILING THE C++ CODE FOR MODEL 'model' NOW.
+## /Users/brown/.R/Makevars:123: warning: overriding commands for target `.c.o'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:123: warning: ignoring old commands for target `.c.o'
+## /Users/brown/.R/Makevars:125: warning: overriding commands for target `.c.d'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:125: warning: ignoring old commands for target `.c.d'
+## /Users/brown/.R/Makevars:128: warning: overriding commands for target `.cc.o'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:128: warning: ignoring old commands for target `.cc.o'
+## /Users/brown/.R/Makevars:130: warning: overriding commands for target `.cpp.o'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:130: warning: ignoring old commands for target `.cpp.o'
+## /Users/brown/.R/Makevars:132: warning: overriding commands for target `.cc.d'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:132: warning: ignoring old commands for target `.cc.d'
+## /Users/brown/.R/Makevars:135: warning: overriding commands for target `.cpp.d'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:135: warning: ignoring old commands for target `.cpp.d'
+## /Users/brown/.R/Makevars:138: warning: overriding commands for target `.m.o'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:138: warning: ignoring old commands for target `.m.o'
+## /Users/brown/.R/Makevars:140: warning: overriding commands for target `.m.d'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:140: warning: ignoring old commands for target `.m.d'
+## /Users/brown/.R/Makevars:143: warning: overriding commands for target `.mm.o'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:143: warning: ignoring old commands for target `.mm.o'
+## /Users/brown/.R/Makevars:145: warning: overriding commands for target `.M.o'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:145: warning: ignoring old commands for target `.M.o'
+## /Users/brown/.R/Makevars:147: warning: overriding commands for target `.f.o'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:147: warning: ignoring old commands for target `.f.o'
+## /Users/brown/.R/Makevars:149: warning: overriding commands for target `.f95.o'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:149: warning: ignoring old commands for target `.f95.o'
+## /Users/brown/.R/Makevars:151: warning: overriding commands for target `.f90.o'
+## /opt/local/Library/Frameworks/R.framework/Resources/etc/Makeconf:151: warning: ignoring old commands for target `.f90.o'
+## SAMPLING FOR MODEL 'model' NOW (CHAIN 1).
+## Iteration:    1 / 10000 [  0%]  (Adapting)Iteration: 1000 / 10000 [ 10%]  (Adapting)Iteration: 2000 / 10000 [ 20%]  (Adapting)Iteration: 3000 / 10000 [ 30%]  (Adapting)Iteration: 4000 / 10000 [ 40%]  (Adapting)Iteration: 5000 / 10000 [ 50%]  (Adapting)Iteration: 6000 / 10000 [ 60%]  (Sampling)Iteration: 7000 / 10000 [ 70%]  (Sampling)Iteration: 8000 / 10000 [ 80%]  (Sampling)Iteration: 9000 / 10000 [ 90%]  (Sampling)Iteration: 10000 / 10000 [100%]  (Sampling)
+## 
+## SAMPLING FOR MODEL 'model' NOW (CHAIN 2).
+## Iteration:    1 / 10000 [  0%]  (Adapting)Iteration: 1000 / 10000 [ 10%]  (Adapting)Iteration: 2000 / 10000 [ 20%]  (Adapting)Iteration: 3000 / 10000 [ 30%]  (Adapting)Iteration: 4000 / 10000 [ 40%]  (Adapting)Iteration: 5000 / 10000 [ 50%]  (Adapting)Iteration: 6000 / 10000 [ 60%]  (Sampling)Iteration: 7000 / 10000 [ 70%]  (Sampling)Iteration: 8000 / 10000 [ 80%]  (Sampling)Iteration: 9000 / 10000 [ 90%]  (Sampling)Iteration: 10000 / 10000 [100%]  (Sampling)
+## 
+## SAMPLING FOR MODEL 'model' NOW (CHAIN 3).
+## Iteration:    1 / 10000 [  0%]  (Adapting)Iteration: 1000 / 10000 [ 10%]  (Adapting)Iteration: 2000 / 10000 [ 20%]  (Adapting)Iteration: 3000 / 10000 [ 30%]  (Adapting)Iteration: 4000 / 10000 [ 40%]  (Adapting)Iteration: 5000 / 10000 [ 50%]  (Adapting)Iteration: 6000 / 10000 [ 60%]  (Sampling)Iteration: 7000 / 10000 [ 70%]  (Sampling)Iteration: 8000 / 10000 [ 80%]  (Sampling)Iteration: 9000 / 10000 [ 90%]  (Sampling)Iteration: 10000 / 10000 [100%]  (Sampling)
+## 
+## SAMPLING FOR MODEL 'model' NOW (CHAIN 4).
+## Iteration:    1 / 10000 [  0%]  (Adapting)Iteration: 1000 / 10000 [ 10%]  (Adapting)Iteration: 2000 / 10000 [ 20%]  (Adapting)Iteration: 3000 / 10000 [ 30%]  (Adapting)Iteration: 4000 / 10000 [ 40%]  (Adapting)Iteration: 5000 / 10000 [ 50%]  (Adapting)Iteration: 6000 / 10000 [ 60%]  (Sampling)Iteration: 7000 / 10000 [ 70%]  (Sampling)Iteration: 8000 / 10000 [ 80%]  (Sampling)Iteration: 9000 / 10000 [ 90%]  (Sampling)Iteration: 10000 / 10000 [100%]  (Sampling)
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+
+
+
+
+\section{Example}
+
+\end{document}
