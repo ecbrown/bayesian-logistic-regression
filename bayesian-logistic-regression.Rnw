@@ -4,7 +4,7 @@
 \usepackage{bm}
 
 \begin{document}
-\title{Bayesian Logistic Regression}
+\title{Bayesian Logistic Regression Test Feature}
 \author{Eric C. Brown}
 \maketitle
 
