@@ -155,6 +155,10 @@ bayesianLogisticRegression <- function(y, X=NULL, Xnew=NULL, iter=5000, thin=1, 
 }
 @
 
+\section{Example}
+
+Predict whether the car will have an automatic (0) or manual (1) transmission.
+
 <<fit, cache=TRUE, dependson='bayesianLogisticRegression'>>=
 y <- mtcars[,'am']
 X <- as.data.frame(mtcars[,c('mpg', 'cyl', 'disp', 'hp', 'drat', 'wt', 'vs', 'gear', 'carb')])
@@ -167,6 +171,5 @@ fit <- bayesianLogisticRegression(y=y, X=X,
 
 
 
-\section{Example}
 
 \end{document}
