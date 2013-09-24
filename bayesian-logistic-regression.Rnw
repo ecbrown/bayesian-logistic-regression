@@ -42,7 +42,7 @@ $$\beta_j \sim \mathcal{N}(0,100), \quad j=1,\dots,J$$
 \section{Code}
 <<bayesianLogisticRegression>>=
 bayesianLogisticRegression <- function(y, X=NULL, Xnew=NULL, iter=5000, thin=1, chains=1, burnin=floor(iter/2), betameanpriors=if(is.null(X)){0}else{rep(0,ncol(X)+1)}, betasdpriors=if(is.null(X)){100}else{rep(100,ncol(X)+1)}, inits=NULL, seed=1) {
-    
+
   if( is.null(X) ) {
     J <- 0
   } else {
@@ -61,7 +61,7 @@ bayesianLogisticRegression <- function(y, X=NULL, Xnew=NULL, iter=5000, thin=1, 
       return()
     }
   }
-  
+
   if( is.null(X) ) {
     form <- formula('y ~ 1')
     mm <- model.matrix(form, data.frame(y=y))
@@ -145,7 +145,7 @@ bayesianLogisticRegression <- function(y, X=NULL, Xnew=NULL, iter=5000, thin=1, 
     betameanpriors = betameanpriors,
     betasdpriors   = betasdpriors,
     Nnew = nrow(mmnew),
-    Xnew = mmnew    
+    Xnew = mmnew
     )
   set.seed(seed)
   print(seed)
@@ -159,17 +159,16 @@ bayesianLogisticRegression <- function(y, X=NULL, Xnew=NULL, iter=5000, thin=1, 
 
 Predict whether the car will have an automatic (0) or manual (1) transmission.
 
+<<mtcars, results='asis'>>=
+xtable(mtcars, caption='\\textbf{mtcars} data set.')
+@
+
 <<fit, cache=TRUE, dependson='bayesianLogisticRegression'>>=
 y <- mtcars[,'am']
 X <- as.data.frame(mtcars[,c('mpg', 'cyl', 'disp', 'hp', 'drat', 'wt', 'vs', 'gear', 'carb')])
 Xnew <- X
-fit <- bayesianLogisticRegression(y=y, X=X, 
-                                  # Xnew=Xnew,
+fit <- bayesianLogisticRegression(y=y, X=X,
                                   iter=10000, chains=4, inits=rep(0,ncol(X)+1))
 @
-
-
-
-
 
 \end{document}
