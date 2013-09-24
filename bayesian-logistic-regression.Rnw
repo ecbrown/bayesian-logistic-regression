@@ -16,6 +16,7 @@ opts_chunk$set(cache.path=cache.path)
 fig.path <- file.path(getwd(), 'figures/figure-')
 opts_chunk$set(fig.path=fig.path)
 @
+here
 
 <<packages, echo=FALSE, results='hide', error=TRUE, warning=TRUE, message=FALSE>>=
 if(!(require(ggplot2))){install.packages('ggplot2', dependencies=TRUE); require(ggplot2)}
